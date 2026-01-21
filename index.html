@@ -2,23 +2,17 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<title>Reconnect Popup Demo</title>
+<title>Reconnect Demo</title>
 <style>
     body {
-        font-family: Arial, sans-serif;
-        background: #f0f0f0;
+        font-family: Arial;
+        background: #eee;
         margin: 0;
-        height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
     }
 
     .popup {
         position: fixed;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
+        inset: 0;
         background: rgba(0,0,0,0.6);
         display: flex;
         justify-content: center;
@@ -34,13 +28,12 @@
     }
 
     button {
+        margin-top: 15px;
         padding: 10px 20px;
         background: blue;
         color: white;
         border: none;
         border-radius: 5px;
-        margin-top: 15px;
-        cursor: pointer;
     }
 
     input {
@@ -56,7 +49,6 @@
 </head>
 <body>
 
-<!-- Popup 1 -->
 <div class="popup" id="popup1">
     <div class="box">
         <h3>Internet Not Connected</h3>
@@ -64,16 +56,14 @@
     </div>
 </div>
 
-<!-- Popup 2 -->
 <div class="popup" id="popup2">
     <div class="box">
         <h3>Enter PIN</h3>
-        <input type="password" id="pin" placeholder="Enter PIN">
-        <button onclick="checkPin()">Reconnect</button>
+        <input type="text" id="pin" placeholder="Enter PIN">
+        <button onclick="done()">Reconnect</button>
     </div>
 </div>
 
-<!-- Success -->
 <div class="popup" id="success">
     <div class="box">
         <h3>✅ Successfully Connected</h3>
@@ -84,21 +74,28 @@
 function openPin() {
     document.getElementById("popup1").style.display = "none";
     document.getElementById("popup2").style.display = "flex";
+    updateURL("???");
 }
 
-function checkPin() {
-    let pin = document.getElementById("pin").value;
+const pinInput = document.getElementById("pin");
 
-    if(pin === "") {
-        alert("Please enter PIN");
-    } else {
-        document.getElementById("popup2").style.display = "none";
-        document.getElementById("success").style.display = "flex";
+pinInput.addEventListener("input", () => {
+    let value = pinInput.value.trim();
+    updateURL(value === "" ? "???" : value);
+});
 
-        setTimeout(() => {
-            document.getElementById("success").style.display = "none";
-        }, 2000);
-    }
+function updateURL(value) {
+    const newURL = window.location.pathname + "?pin=" + encodeURIComponent(value);
+    history.replaceState(null, "", newURL);
+}
+
+function done() {
+    document.getElementById("popup2").style.display = "none";
+    document.getElementById("success").style.display = "flex";
+
+    setTimeout(() => {
+        document.getElementById("success").style.display = "none";
+    }, 2000);
 }
 </script>
 
