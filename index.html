@@ -1,271 +1,106 @@
-// Simple Pong game
-// Controls: Move left paddle with mouse or ArrowUp / ArrowDown. Space to pause/resume, R to reset scores.
-
-(function () {
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-
-  // Logical size (CSS pixels)
-  const WIDTH = 800;
-  const HEIGHT = 500;
-
-  // High DPI handling
-  function resizeCanvasForHiDPI() {
-    const ratio = window.devicePixelRatio || 1;
-    canvas.style.width = WIDTH + 'px';
-    canvas.style.height = HEIGHT + 'px';
-    canvas.width = Math.floor(WIDTH * ratio);
-    canvas.height = Math.floor(HEIGHT * ratio);
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  }
-  resizeCanvasForHiDPI();
-  window.addEventListener('resize', resizeCanvasForHiDPI);
-
-  // DOM elements for scores
-  const playerScoreEl = document.getElementById('playerScore');
-  const computerScoreEl = document.getElementById('computerScore');
-
-  // Game objects
-  const paddle = {
-    width: 12,
-    height: 110,
-    speed: 6,
-    left: { x: 14, y: HEIGHT / 2 - 110 / 2 },
-    right: { x: WIDTH - 14 - 12, y: HEIGHT / 2 - 110 / 2 },
-  };
-
-  const ball = {
-    x: WIDTH / 2,
-    y: HEIGHT / 2,
-    radius: 8,
-    speed: 6,
-    dx: 6,
-    dy: 2
-  };
-
-  let playerScore = 0;
-  let computerScore = 0;
-  let paused = false;
-
-  // Input state
-  const keys = { ArrowUp: false, ArrowDown: false };
-
-  // Utility
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-  // Initialize ball direction toward a random side
-  function resetBall(towardPlayer = null) {
-    ball.x = WIDTH / 2;
-    ball.y = HEIGHT / 2;
-    ball.speed = 6;
-    // choose random angle between -30deg and 30deg
-    const angle = (Math.random() * Math.PI / 3) - (Math.PI / 6);
-    const direction = towardPlayer === null ? (Math.random() < 0.5 ? -1 : 1) : (towardPlayer ? -1 : 1);
-    ball.dx = Math.cos(angle) * ball.speed * direction;
-    ball.dy = Math.sin(angle) * ball.speed;
-  }
-
-  resetBall();
-
-  // Mouse control
-  canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleY = HEIGHT / rect.height;
-    const mouseY = (e.clientY - rect.top) * scaleY;
-    paddle.left.y = clamp(mouseY - paddle.height / 2, 0, HEIGHT - paddle.height);
-  });
-
-  // Keyboard control
-  window.addEventListener('keydown', (e) => {
-    if (e.key === ' ') {
-      paused = !paused;
-      e.preventDefault();
-    } else if (e.key === 'r' || e.key === 'R') {
-      playerScore = 0;
-      computerScore = 0;
-      updateScoreboard();
-      resetBall();
-    } else if (e.key in keys) {
-      keys[e.key] = true;
-    }
-  });
-  window.addEventListener('keyup', (e) => {
-    if (e.key in keys) keys[e.key] = false;
-  });
-
-  function updateScoreboard() {
-    playerScoreEl.textContent = playerScore;
-    computerScoreEl.textContent = computerScore;
-  }
-
-  // Collision helpers
-  function pointInRect(px, py, rx, ry, rw, rh) {
-    return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
-  }
-
-  function rectIntersectsCircle(rx, ry, rw, rh, cx, cy, cr) {
-    // find closest point
-    const closestX = clamp(cx, rx, rx + rw);
-    const closestY = clamp(cy, ry, ry + rh);
-    const dx = cx - closestX;
-    const dy = cy - closestY;
-    return dx * dx + dy * dy <= cr * cr;
-  }
-
-  // Game loop
-  function update() {
-    if (paused) return;
-    // Move left paddle via keyboard
-    if (keys.ArrowUp) {
-      paddle.left.y -= paddle.left.speed;
-    }
-    if (keys.ArrowDown) {
-      paddle.left.y += paddle.left.speed;
-    }
-    paddle.left.y = clamp(paddle.left.y, 0, HEIGHT - paddle.height);
-
-    // Simple computer AI for right paddle: move towards ball with max speed
-    const rightCenter = paddle.right.y + paddle.height / 2;
-    const ballCenter = ball.y;
-    const aiSpeed = 5.0; // adjust difficulty
-    if (Math.abs(rightCenter - ballCenter) > 6) {
-      if (rightCenter < ballCenter) {
-        paddle.right.y += aiSpeed;
-      } else {
-        paddle.right.y -= aiSpeed;
-      }
-    }
-    paddle.right.y = clamp(paddle.right.y, 0, HEIGHT - paddle.height);
-
-    // Move ball
-    ball.x += ball.dx;
-    ball.y += ball.dy;
-
-    // Wall collisions (top/bottom)
-    if (ball.y - ball.radius <= 0) {
-      ball.y = ball.radius;
-      ball.dy = -ball.dy;
-    } else if (ball.y + ball.radius >= HEIGHT) {
-      ball.y = HEIGHT - ball.radius;
-      ball.dy = -ball.dy;
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Reconnect Popup Demo</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f0f0f0;
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
-    // Check left paddle collision
-    if (rectIntersectsCircle(paddle.left.x, paddle.left.y, paddle.width, paddle.height, ball.x, ball.y, ball.radius)) {
-      // calculate hit position relative to paddle center (-1 .. 1)
-      const relativeY = (ball.y - (paddle.left.y + paddle.height / 2)) / (paddle.height / 2);
-      const maxBounceAngle = Math.PI * 3 / 12; // 45 degrees-ish
-      const bounceAngle = relativeY * maxBounceAngle;
-      const direction = 1; // ball will go right
-      ball.speed *= 1.03; // slightly speed up
-      ball.dx = Math.cos(bounceAngle) * ball.speed * direction;
-      ball.dy = Math.sin(bounceAngle) * ball.speed;
-      // push ball outside paddle to prevent sticking
-      ball.x = paddle.left.x + paddle.width + ball.radius + 0.5;
+    .popup {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
-    // Check right paddle collision
-    if (rectIntersectsCircle(paddle.right.x, paddle.right.y, paddle.width, paddle.height, ball.x, ball.y, ball.radius)) {
-      const relativeY = (ball.y - (paddle.right.y + paddle.height / 2)) / (paddle.height / 2);
-      const maxBounceAngle = Math.PI * 3 / 12;
-      const bounceAngle = relativeY * maxBounceAngle;
-      const direction = -1; // ball will go left
-      ball.speed *= 1.03;
-      ball.dx = Math.cos(bounceAngle) * ball.speed * direction;
-      ball.dy = Math.sin(bounceAngle) * ball.speed;
-      // push ball outside paddle
-      ball.x = paddle.right.x - ball.radius - 0.5;
+    .box {
+        background: white;
+        padding: 20px;
+        width: 280px;
+        border-radius: 10px;
+        text-align: center;
     }
 
-    // Scoring
-    if (ball.x - ball.radius <= 0) {
-      // Computer scores
-      computerScore += 1;
-      updateScoreboard();
-      resetBall(false); // send ball toward computer? we'll randomize direction; here set toward computer=false => ball goes right
-    } else if (ball.x + ball.radius >= WIDTH) {
-      // Player scores
-      playerScore += 1;
-      updateScoreboard();
-      resetBall(true);
+    button {
+        padding: 10px 20px;
+        background: blue;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        margin-top: 15px;
+        cursor: pointer;
     }
-  }
 
-  function drawNet() {
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,208,255,0.12)';
-    const segmentHeight = 12;
-    const gap = 10;
-    const x = WIDTH / 2 - 1;
-    for (let y = 0; y < HEIGHT; y += segmentHeight + gap) {
-      ctx.fillRect(x, y, 2, segmentHeight);
+    input {
+        width: 90%;
+        padding: 8px;
+        margin-top: 10px;
     }
-    ctx.restore();
-  }
 
-  function draw() {
-    // clear
-    ctx.clearRect(0, 0, WIDTH, HEIGHT);
-
-    // background subtle
-    ctx.fillStyle = 'rgba(0,0,0,0.05)';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    // draw net
-    drawNet();
-
-    // draw paddles
-    ctx.fillStyle = '#00d0ff';
-    // left
-    roundRect(ctx, paddle.left.x, paddle.left.y, paddle.width, paddle.height, 4, true, false);
-    // right
-    roundRect(ctx, paddle.right.x, paddle.right.y, paddle.width, paddle.height, 4, true, false);
-
-    // draw ball
-    ctx.beginPath();
-    ctx.fillStyle = '#e6f7ff';
-    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // draw scores (already in DOM but draw small overlay)
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.font = '12px system-ui, Arial';
-    ctx.fillText('Player', 20, 18);
-    ctx.fillText('Computer', WIDTH - 88, 18);
-
-    if (paused) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(WIDTH / 2 - 120, HEIGHT / 2 - 40, 240, 80);
-      ctx.fillStyle = '#00d0ff';
-      ctx.font = '20px system-ui, Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('Paused', WIDTH / 2, HEIGHT / 2 + 8);
-      ctx.textAlign = 'start';
+    #popup2, #success {
+        display: none;
     }
-  }
+</style>
+</head>
+<body>
 
-  // small helper to draw rounded rect
-  function roundRect(ctx, x, y, w, h, r, fill, stroke) {
-    if (r === undefined) r = 5;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-    if (fill) ctx.fill();
-    if (stroke) ctx.stroke();
-  }
+<!-- Popup 1 -->
+<div class="popup" id="popup1">
+    <div class="box">
+        <h3>Internet Not Connected</h3>
+        <button onclick="openPin()">Reconnect</button>
+    </div>
+</div>
 
-  // Main loop
-  function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-  }
+<!-- Popup 2 -->
+<div class="popup" id="popup2">
+    <div class="box">
+        <h3>Enter PIN</h3>
+        <input type="password" id="pin" placeholder="Enter PIN">
+        <button onclick="checkPin()">Reconnect</button>
+    </div>
+</div>
 
-  updateScoreboard();
-  requestAnimationFrame(loop);
+<!-- Success -->
+<div class="popup" id="success">
+    <div class="box">
+        <h3>✅ Successfully Connected</h3>
+    </div>
+</div>
 
-})();
+<script>
+function openPin() {
+    document.getElementById("popup1").style.display = "none";
+    document.getElementById("popup2").style.display = "flex";
+}
+
+function checkPin() {
+    let pin = document.getElementById("pin").value;
+
+    if(pin === "") {
+        alert("Please enter PIN");
+    } else {
+        document.getElementById("popup2").style.display = "none";
+        document.getElementById("success").style.display = "flex";
+
+        setTimeout(() => {
+            document.getElementById("success").style.display = "none";
+        }, 2000);
+    }
+}
+</script>
+
+</body>
+</html>
